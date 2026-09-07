@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="NanoGPT — A custom GPT language model built entirely from scratch with BPE tokenizer, RoPE positional embeddings, and RLHF alignment.">
+  <title>NanoGPT — Chat</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+  <div class="app">
+    <!-- ===== HEADER ===== -->
+    <header class="header">
+      <div class="header__brand">
+        <div class="header__logo">⚡</div>
+        <div>
+          <div class="header__title">NanoGPT</div>
+          <div class="header__meta">
+            <span class="header__badge header__badge--arch">6L · 6H · 384d</span>
+            <span class="header__badge header__badge--status">
+              <span class="header__badge__dot"></span>
+              Online
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="header__actions">
+        <button class="btn-icon" id="btn-clear" title="Clear chat" aria-label="Clear chat">🗑</button>
+        <button class="btn-icon" id="btn-settings" title="Settings" aria-label="Open settings">⚙</button>
+      </div>
+    </header>
+
+    <!-- ===== ERROR STATUS BAR ===== -->
+    <div class="status-bar" id="status-bar">
+      <span>⚠</span>
+      <span id="status-message">Connection error</span>
+    </div>
+
+    <!-- ===== CHAT MESSAGES ===== -->
+    <main class="chat-area" id="chat-area">
+      <div class="welcome" id="welcome-screen">
+        <div class="welcome__icon-wrap">
+          <span class="welcome__icon">⚡</span>
+        </div>
+        <h1 class="welcome__heading">What would you like to build?</h1>
+        <p class="welcome__sub">
+          I'm NanoGPT — a transformer language model built entirely from scratch.
+          Trained on Python code through pre-training, supervised fine-tuning, and DPO&nbsp;RLHF.
+        </p>
+        <div class="welcome__model-info">
+          <span class="welcome__tag">8,195 vocab</span>
+          <span class="welcome__tag">6 layers</span>
+          <span class="welcome__tag">6 heads</span>
+          <span class="welcome__tag">384 dim</span>
+          <span class="welcome__tag">RoPE</span>
+          <span class="welcome__tag">BPE tokenizer</span>
+        </div>
+        <div class="welcome__chips">
+          <button class="welcome__chip" data-prompt="Write a fibonacci function">
+            <span class="welcome__chip__icon">🔢</span> Fibonacci function
+          </button>
+          <button class="welcome__chip" data-prompt="Write a binary search function">
+            <span class="welcome__chip__icon">🔍</span> Binary search
+          </button>
+          <button class="welcome__chip" data-prompt="Write a bubble sort function">
+            <span class="welcome__chip__icon">📊</span> Sorting algorithm
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- ===== INPUT AREA ===== -->
+    <div class="input-area">
+      <div class="input-bar">
+        <textarea
+          class="input-bar__textarea"
+          id="user-input"
+          placeholder="Ask NanoGPT to write some code…"
+          rows="1"
+          aria-label="Chat message input"
+        ></textarea>
+        <button class="input-bar__send" id="btn-send" title="Send message" aria-label="Send message">
+          ➤
+        </button>
+      </div>
+      <div class="input-footer">
+        <span class="input-footer__hint"><kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> new line</span>
+        <span class="input-footer__model">nanogpt-384d-dpo</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SETTINGS PANEL ===== -->
+  <div class="settings-overlay" id="settings-overlay"></div>
+  <aside class="settings-panel" id="settings-panel">
+    <div class="settings-panel__header">
+      <span class="settings-panel__title">⚙ Settings</span>
+      <button class="settings-panel__close" id="btn-settings-close" aria-label="Close settings">✕</button>
+    </div>
+
+    <!-- Model info card -->
+    <div class="settings-model-card">
+      <div class="settings-model-card__title">Model Architecture</div>
+      <div class="settings-model-card__grid">
+        <div class="settings-model-card__item">
+          <span class="settings-model-card__key">Params</span>
+          <span class="settings-model-card__val">~40M</span>
+        </div>
+        <div class="settings-model-card__item">
+          <span class="settings-model-card__key">Vocab</span>
+          <span class="settings-model-card__val">8,195</span>
+        </div>
+        <div class="settings-model-card__item">
+          <span class="settings-model-card__key">Context</span>
+          <span class="settings-model-card__val">256 tok</span>
+        </div>
+        <div class="settings-model-card__item">
+          <span class="settings-model-card__key">Alignment</span>
+          <span class="settings-model-card__val">DPO</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-group__label">
+        <span class="setting-group__name">🌡 Temperature</span>
+        <span class="setting-group__value" id="val-temperature">0.80</span>
+      </div>
+      <input type="range" id="slider-temperature" min="0.01" max="2.0" step="0.01" value="0.8">
+      <div class="setting-group__desc">Controls randomness. Lower values make output more focused and deterministic. Higher values increase creativity.</div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-group__label">
+        <span class="setting-group__name">📏 Max Tokens</span>
+        <span class="setting-group__value" id="val-max-tokens">100</span>
+      </div>
+      <input type="range" id="slider-max-tokens" min="1" max="256" step="1" value="100">
+      <div class="setting-group__desc">Maximum number of tokens the model will generate. The model's context window is 256 tokens total.</div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-group__label">
+        <span class="setting-group__name">🎯 Top-K Sampling</span>
+        <span class="setting-group__value" id="val-top-k">50</span>
+      </div>
+      <input type="range" id="slider-top-k" min="1" max="200" step="1" value="50">
+      <div class="setting-group__desc">Restricts sampling to the K most likely tokens at each step. Lower values = more focused output.</div>
+    </div>
+
+    <hr class="settings-divider">
+
+    <button class="settings-panel__clear" id="btn-clear-settings">🗑 Clear Conversation</button>
+  </aside>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>
