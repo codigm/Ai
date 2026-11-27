@@ -27,6 +27,7 @@ async def lifespan(app: FastAPI):
     candidate_paths = [
         p for p in [
             os.environ.get("MODEL_PATH"),
+            "model_sft_weights.pt",
             "model_sft_final.pt",
             "model_step_9500.pt",
         ]
@@ -35,7 +36,7 @@ async def lifespan(app: FastAPI):
     checkpoint_path = next((p for p in candidate_paths if os.path.exists(p)), None)
     if checkpoint_path is None:
         raise RuntimeError(
-            "Error: Could not find a model checkpoint (tried model_sft_final.pt, model_step_9500.pt)."
+            "Error: Could not find a model checkpoint (tried model_sft_weights.pt, model_sft_final.pt, model_step_9500.pt)."
         )
 
     print(f"Loading checkpoint from {checkpoint_path}...")

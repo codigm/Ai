@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY --chown=user server.py model.py tokenizer.py generate.py tokenizer.json ./
 COPY --chown=user static/ ./static/
-COPY --chown=user model_sft_final.pt* model_step_9500.pt* ./
+COPY --chown=user model_sft_weights.pt* model_sft_final.pt* model_step_9500.pt* ./
 
 EXPOSE 7860
 
