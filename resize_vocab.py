@@ -3,8 +3,9 @@ import torch.nn as nn
 from model import GPT
 
 def main():
+    import os
     device = 'cpu'
-    checkpoint_path = 'model_final.pt'
+    checkpoint_path = 'model_final.pt' if os.path.exists('model_final.pt') else 'model_step_9500.pt'
     output_path = 'model_chat_base.pt'
     
     print(f"Loading checkpoint {checkpoint_path}...")

@@ -1,0 +1,12 @@
+.git
+.venv
+__pycache__/
+*.pyc
+corpus/
+tests/
+*.jsonl
+*.zip
+*.md
+.pytest_cache
+uv.lock
+pyproject.toml

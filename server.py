@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn.functional as F
 import asyncio
@@ -23,13 +24,23 @@ device = 'cpu'
 async def lifespan(app: FastAPI):
     global model, tokenizer, config
     
-    checkpoint_path = "model_sft_final.pt"
+    candidate_paths = [
+        p for p in [
+            os.environ.get("MODEL_PATH"),
+            "model_sft_final.pt",
+            "model_step_9500.pt",
+        ]
+        if p
+    ]
+    checkpoint_path = next((p for p in candidate_paths if os.path.exists(p)), None)
+    if checkpoint_path is None:
+        raise RuntimeError(
+            "Error: Could not find a model checkpoint (tried model_sft_final.pt, model_step_9500.pt)."
+        )
+
     print(f"Loading checkpoint from {checkpoint_path}...")
-    try:
-        checkpoint = torch.load(checkpoint_path, map_location=device)
-    except FileNotFoundError:
-        raise RuntimeError("Error: Could not find model_sft_final.pt. Did you run sft_train.py?")
-        
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+
     config = checkpoint['config']
     model = GPT(**config)
     
@@ -44,12 +55,36 @@ async def lifespan(app: FastAPI):
     
     model.load_state_dict(checkpoint['model'], strict=False)
     model.to(device)
+
+    tokenizer = BPETokenizer()
+    tokenizer.load("tokenizer.json")
+
+    # If loading a pre-trained checkpoint (e.g. vocab_size=8192) with the chat tokenizer (8195),
+    # resize embeddings + tied lm_head so special chat tokens (<|user|>, <|assistant|>, <|end|>) don't crash.
+    target_vocab_size = max(
+        [config['vocab_size'], 8195]
+        + [tid + 1 for tid in getattr(tokenizer, 'special_tokens', {}).values()]
+    )
+    if config['vocab_size'] < target_vocab_size:
+        old_vocab_size = config['vocab_size']
+        old_weight = model.token_embedding.weight.data
+        d_model = old_weight.shape[1]
+        new_weight = torch.empty((target_vocab_size, d_model), device=device)
+        new_weight[:old_vocab_size, :] = old_weight
+        torch.nn.init.normal_(new_weight[old_vocab_size:, :], mean=0.0, std=0.02)
+
+        new_embedding = torch.nn.Embedding(target_vocab_size, d_model).to(device)
+        new_embedding.weight.data = new_weight
+        new_lm_head = torch.nn.Linear(d_model, target_vocab_size, bias=False).to(device)
+        new_lm_head.weight = new_embedding.weight
+
+        model.token_embedding = new_embedding
+        model.lm_head = new_lm_head
+        config['vocab_size'] = target_vocab_size
+        print(f"Resized model vocab from {old_vocab_size} to {target_vocab_size} to match tokenizer.")
     
     # CRITICAL: Set to eval mode exactly once at startup
     model.eval()
-    
-    tokenizer = BPETokenizer()
-    tokenizer.load("tokenizer.json")
     
     print("Model and Tokenizer loaded successfully. Ready for inference!")
     yield # Server is running
@@ -73,6 +108,10 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/")
 async def serve_index():
     return FileResponse("static/index.html")
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "model_loaded": model is not None}
 
 class GenerateRequest(BaseModel):
     prompt: str = Field(..., description="The starting text to condition the model.")
@@ -260,4 +299,6 @@ if __name__ == "__main__":
     import uvicorn
     # Note: Running with a single worker because PyTorch CPU inference 
     # isn't entirely safe/efficient for true concurrency on a small machine.
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    reload = os.environ.get("RELOAD", "false").lower() == "true"
+    uvicorn.run("server:app", host="0.0.0.0", port=port, reload=reload)

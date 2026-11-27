@@ -1,3 +1,12 @@
+---
+title: Polyglot AI
+emoji: 🤖
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+---
+
 # Polyglot AI: A From-Scratch LLM Pipeline
 
 This repository contains a complete, end-to-end pipeline for training a Generative Pre-trained Transformer (GPT) language model from absolute scratch. 
